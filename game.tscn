@@ -1,0 +1,36 @@
+[gd_scene load_steps=6 format=3 uid="uid://dsc227cqhjtyj"]
+
+[ext_resource type="Script" path="res://GameManager.gd" id="1_apao1"]
+[ext_resource type="Texture2D" uid="uid://dljinr4omcuxi" path="res://icon.svg" id="1_mb7fh"]
+[ext_resource type="Script" path="res://player.gd" id="2_wp0lw"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_a5rc8"]
+frequency = 0.0048
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_tueqv"]
+width = 5000
+height = 5000
+noise = SubResource("FastNoiseLite_a5rc8")
+
+[node name="Node2D" type="Node2D"]
+script = ExtResource("1_apao1")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(2500, 2500)
+texture = SubResource("NoiseTexture2D_tueqv")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+position = Vector2(3922, 426)
+texture = ExtResource("1_mb7fh")
+script = ExtResource("2_wp0lw")
+
+[node name="Camera2D" type="Camera2D" parent="Sprite"]
+
+[node name="Label" type="Label" parent="Sprite"]
+offset_left = -84.0
+offset_top = 64.0
+offset_right = 83.0
+offset_bottom = 109.0
+theme_override_font_sizes/font_size = 32
+text = "Andarilhoz"
+horizontal_alignment = 1
