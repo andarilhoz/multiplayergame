@@ -20,7 +20,7 @@ position = Vector2(2500, 2500)
 texture = SubResource("NoiseTexture2D_tueqv")
 
 [node name="Sprite" type="Sprite2D" parent="."]
-position = Vector2(3922, 426)
+position = Vector2(2441, 2481)
 texture = ExtResource("1_mb7fh")
 script = ExtResource("2_wp0lw")
 

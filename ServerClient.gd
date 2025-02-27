@@ -13,9 +13,14 @@ var nickname = ""
 var lastMessage = ""
 var initialX = 0
 var initialY = 0
+var foods = [];
+var players = [];
 
 signal update_players
+signal player_connected(player_id, nickname, x, y)
 signal player_disconnected(player_id)
+signal food_eaten(food_id, player_id)
+signal food_spawn(foods)
 
 # Chamado quando o nó entra na árvore da cena
 func _ready() -> void:
@@ -61,7 +66,6 @@ func send_movement(movement: Vector2):
 		return
 
 	lastMessage = message
-	print("Mandando novo movimento")
 	udp_client.put_packet(message.to_utf8_buffer())
 
 # Envia mensagens personalizadas via UDP
@@ -83,12 +87,17 @@ func _process(delta):
 	# 🔹 Verifica mensagens TCP do servidor
 	if tcp_client.get_status() == StreamPeerTCP.STATUS_CONNECTED and tcp_client.get_available_bytes() > 0:
 		var response = tcp_client.get_utf8_string(tcp_client.get_available_bytes())
-		process_server_message(response)
+		var messages = response.split("\n", false)
+		for message in messages:
+			message = message.strip_edges()
+			if message.is_empty():
+				continue
+			process_server_message(message)
 
 	# 🔹 Verifica mensagens UDP do servidor
 	if udp_client.get_available_packet_count() > 0:
 		var response = udp_client.get_packet().get_string_from_utf8()
-		print("📩 Resposta UDP recebida:", response)
+		#print("📩 Resposta UDP recebida:", response)
 		var json = JSON.parse_string(response)
 		if json and "players" in json:
 			update_players.emit(json)
@@ -97,31 +106,76 @@ func _process(delta):
 func process_server_message(received_data):
 	var json_data = JSON.parse_string(received_data)
 	if json_data == null:
-		print("❌ Erro ao processar JSON do servidor.")
+		print("❌ Erro ao processar JSON do servidor. ", received_data)
 		return
-
+	
 	if json_data.has("type"):
 		match json_data["type"]:
 			"player_disconnect":
 				handle_player_disconnect(json_data)
+			"player_connect":
+				handle_player_connect(json_data)
 			"game_update":
 				update_players.emit(json_data)
 			"connect":
-				player_id = json_data["playerId"]
-				nickname = json_data["nickname"]
-				initialX = json_data["x"]
-				initialY = json_data["y"]
-				print("🎮 ID do jogador:", player_id)
-				udp_client.set_dest_address(server_ip, udp_port)
+				handle_connect(json_data)
 				switch_to_game_scene()
+			"food_spawn":
+				handle_food_spawn(json_data)
+			"food_eaten":
+				handle_food_eaten(json_data)
 			_:
 				print("📩 Mensagem TCP não reconhecida:", json_data)
 
+func handle_food_spawn(json_data):
+	food_spawn.emit(json_data["foods"])
+
+func handle_food_eaten(json_data):
+	var foodId = json_data["id"]
+	var playerId = json_data["playerId"]
+	food_eaten.emit(foodId, playerId)
+	
+
+func handle_connect(json_data):
+	player_id = json_data["id"]
+	print("Json data ", json_data)
+	foods = json_data["foods"]
+	print("🎮 ID do jogador:", player_id)
+	
+	for player in json_data["players"]:
+		if player.id == player_id:
+			nickname = player.nickname
+			initialX = player.x
+			initialY = player.y
+			print("Set player data ", nickname)
+			continue
+			
+		players.append(
+			{
+				"id": player.id, 
+				"nickname": player.nickname, 
+				"x": player.x, 
+				"y": player.y
+			}
+		)
+		
+	
+	udp_client.set_dest_address(server_ip, udp_port)
+
 # **Novo: Remove jogadores quando eles desconectam**
 func handle_player_disconnect(json_data):
-	var disconnected_id = json_data["playerId"]
+	var disconnected_id = json_data["id"]
 	print("🔴 Jogador desconectado:", disconnected_id)
 	player_disconnected.emit(disconnected_id)
+
+func handle_player_connect(json_data):
+	var player_id = json_data["id"]
+	var nickname = json_data["nickname"]
+	var x = json_data["x"]
+	var y = json_data["y"]
+	print("Jogador conectado:", player_id)
+	player_connected.emit(player_id, nickname, x, y)
+
 
 # Alterna para a cena do jogo
 func switch_to_game_scene():
