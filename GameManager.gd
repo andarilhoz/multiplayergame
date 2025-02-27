@@ -59,7 +59,7 @@ func _receive_data(json):
 			update_self.emit(player)
 			continue;
 			
-		var current_other = other_players.get(player.id)
+		var current_other = other_players.get(player.id)		
 		if current_other == null:
 			return;
 		
