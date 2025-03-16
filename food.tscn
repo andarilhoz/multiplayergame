@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://clku5p2l0xp3a"]
 
 [ext_resource type="Texture2D" uid="uid://dljinr4omcuxi" path="res://icon.svg" id="1_e0xg7"]
-[ext_resource type="Script" path="res://food.gd" id="2_ei40i"]
+[ext_resource type="Script" uid="uid://b1nv8xysflpss" path="res://food.gd" id="2_ei40i"]
 
 [node name="Food" type="Sprite2D"]
 position = Vector2(4210, 503)

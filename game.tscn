@@ -1,8 +1,9 @@
-[gd_scene load_steps=6 format=3 uid="uid://dsc227cqhjtyj"]
+[gd_scene load_steps=7 format=3 uid="uid://dsc227cqhjtyj"]
 
-[ext_resource type="Script" path="res://GameManager.gd" id="1_apao1"]
+[ext_resource type="Script" uid="uid://bi0no7lvl3bu5" path="res://GameManager.gd" id="1_apao1"]
 [ext_resource type="Texture2D" uid="uid://dljinr4omcuxi" path="res://icon.svg" id="1_mb7fh"]
-[ext_resource type="Script" path="res://player.gd" id="2_wp0lw"]
+[ext_resource type="Script" uid="uid://dbyqp8oluwpry" path="res://player.gd" id="2_wp0lw"]
+[ext_resource type="Script" uid="uid://bdwmox7wwetp" path="res://ping.gd" id="4_d08xr"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_a5rc8"]
 frequency = 0.0048
@@ -19,14 +20,15 @@ script = ExtResource("1_apao1")
 position = Vector2(2500, 2500)
 texture = SubResource("NoiseTexture2D_tueqv")
 
-[node name="Sprite" type="Sprite2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(2441, 2481)
+
+[node name="Player" type="Sprite2D" parent="."]
 position = Vector2(2441, 2481)
 texture = ExtResource("1_mb7fh")
 script = ExtResource("2_wp0lw")
 
-[node name="Camera2D" type="Camera2D" parent="Sprite"]
-
-[node name="Label" type="Label" parent="Sprite"]
+[node name="Label" type="Label" parent="Player"]
 offset_left = -84.0
 offset_top = 64.0
 offset_right = 83.0
@@ -34,3 +36,22 @@ offset_bottom = 109.0
 theme_override_font_sizes/font_size = 32
 text = "Andarilhoz"
 horizontal_alignment = 1
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Control" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1154.0
+offset_bottom = 643.0
+
+[node name="Label" type="Label" parent="CanvasLayer/Control"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 275.0
+offset_bottom = 90.0
+theme_override_font_sizes/font_size = 48
+text = "Ping: 0ms"
+vertical_alignment = 1
+script = ExtResource("4_d08xr")

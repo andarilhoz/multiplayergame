@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://jxe4hx5tvofo"]
 
-[ext_resource type="Script" path="res://loginView.gd" id="1_kvkfv"]
+[ext_resource type="Script" uid="uid://bimy253uudmmn" path="res://loginView.gd" id="1_kvkfv"]
 
 [node name="Control" type="Control"]
 layout_mode = 3
@@ -36,7 +36,7 @@ offset_left = 245.0
 offset_top = 203.0
 offset_right = 906.0
 offset_bottom = 263.0
-text = "AndarilhOz"
+placeholder_text = "Your Nickname"
 
 [node name="SendBtn" type="Button" parent="Panel"]
 layout_mode = 1

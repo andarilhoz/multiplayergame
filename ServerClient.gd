@@ -16,11 +16,20 @@ var initialY = 0
 var foods = [];
 var players = [];
 
+var ping_start_time = 0.0
+var last_ping = 0.0
+var ping_interval = 1.0
+var max_ping_timeout = 2000  # 2 segundos de timeout
+var last_received_ping_time = 0.0
+
 signal update_players
-signal player_connected(player_id, nickname, x, y)
+signal player_connected(player_id, nickname, x, y, size)
 signal player_disconnected(player_id)
 signal food_eaten(food_id, player_id)
 signal food_spawn(foods)
+signal ping_updated(ping_value)
+signal kill(assassin, victim, victim_size)
+signal player_respawn(playerId, x, y)
 
 # Chamado quando o nó entra na árvore da cena
 func _ready() -> void:
@@ -84,6 +93,14 @@ func send_udp_message(data):
 
 # **Novo: Ouvindo mensagens TCP constantemente no `_process()`**
 func _process(delta):
+	if udp_client.get_available_packet_count() > 0:
+		var current_time = Time.get_ticks_msec()
+		var response = udp_client.get_packet().get_string_from_utf8()
+		process_udp_messages(response)
+		
+	last_ping += delta
+	last_received_ping_time += delta * 1000  # Converter para milissegundos
+	
 	# 🔹 Verifica mensagens TCP do servidor
 	if tcp_client.get_status() == StreamPeerTCP.STATUS_CONNECTED and tcp_client.get_available_bytes() > 0:
 		var response = tcp_client.get_utf8_string(tcp_client.get_available_bytes())
@@ -92,18 +109,40 @@ func _process(delta):
 			message = message.strip_edges()
 			if message.is_empty():
 				continue
-			process_server_message(message)
+			process_tcp_message(message)
 
 	# 🔹 Verifica mensagens UDP do servidor
-	if udp_client.get_available_packet_count() > 0:
-		var response = udp_client.get_packet().get_string_from_utf8()
-		#print("📩 Resposta UDP recebida:", response)
-		var json = JSON.parse_string(response)
-		if json and "players" in json:
-			update_players.emit(json)
 
+		
+	if last_ping >= ping_interval:
+		send_ping()
+		last_ping = 0.0
+		
+	if last_received_ping_time >= max_ping_timeout:
+		print("⚠️ Ping Timeout - Pacote perdido!")
+		last_received_ping_time = 0
+			
+func process_udp_messages(message):
+	var json_data = JSON.parse_string(message)
+	if json_data and "type" in json_data:
+		match json_data["type"]:
+			"pong":
+				var received_timestamp = int(json_data["timestamp"])
+				var current_time = Time.get_ticks_msec()
+				var ping_value = current_time - received_timestamp
+				emit_signal("ping_updated", ping_value)
+				print("ServerTimeEpoch: ", received_timestamp, "Local: ", current_time)
+				last_received_ping_time = 0  # Reseta o timeout, pois recebeu um pong
+				print("📡 Ping: ", ping_value, "ms")
+				ping_updated.emit(ping_value);
+			"update":
+				update_players.emit(json_data)
+			_:
+				print("📩 Mensagem UDP não reconhecida:", json_data)
+			
+			
 # **Novo: Processa mensagens TCP do servidor**
-func process_server_message(received_data):
+func process_tcp_message(received_data):
 	var json_data = JSON.parse_string(received_data)
 	if json_data == null:
 		print("❌ Erro ao processar JSON do servidor. ", received_data)
@@ -124,8 +163,22 @@ func process_server_message(received_data):
 				handle_food_spawn(json_data)
 			"food_eaten":
 				handle_food_eaten(json_data)
+			"kill":
+				var assassin = json_data["assassin"]
+				var victim = json_data["victim"]
+				var victim_size = json_data["victimSize"]
+				kill.emit(assassin, victim, victim_size)
+			"respawn":
+				handle_player_respawn(json_data)
 			_:
 				print("📩 Mensagem TCP não reconhecida:", json_data)
+
+func handle_player_respawn(json_data):
+	var other_id = json_data["id"]	
+	var x = json_data["x"]
+	var y = json_data["y"]	
+	print("Jogador respawnou:", other_id)
+	player_respawn.emit(other_id, x, y)
 
 func handle_food_spawn(json_data):
 	food_spawn.emit(json_data["foods"])
@@ -134,7 +187,6 @@ func handle_food_eaten(json_data):
 	var foodId = json_data["id"]
 	var playerId = json_data["playerId"]
 	food_eaten.emit(foodId, playerId)
-	
 
 func handle_connect(json_data):
 	player_id = json_data["id"]
@@ -155,12 +207,15 @@ func handle_connect(json_data):
 				"id": player.id, 
 				"nickname": player.nickname, 
 				"x": player.x, 
-				"y": player.y
+				"y": player.y,
+				"size": player.size
 			}
 		)
 		
 	
 	udp_client.set_dest_address(server_ip, udp_port)
+	await get_tree().create_timer(0.2).timeout
+	send_ping()
 
 # **Novo: Remove jogadores quando eles desconectam**
 func handle_player_disconnect(json_data):
@@ -169,13 +224,23 @@ func handle_player_disconnect(json_data):
 	player_disconnected.emit(disconnected_id)
 
 func handle_player_connect(json_data):
-	var player_id = json_data["id"]
+	var other_id = json_data["id"]
+	if(other_id == player_id):
+		return;
 	var nickname = json_data["nickname"]
 	var x = json_data["x"]
 	var y = json_data["y"]
-	print("Jogador conectado:", player_id)
-	player_connected.emit(player_id, nickname, x, y)
+	print("Jogador conectado:", other_id)
+	player_connected.emit(other_id, nickname, x, y, 64)
 
+
+func send_ping():
+	ping_start_time = Time.get_ticks_msec()
+	var ping_data = {
+		"type": "ping",
+		"timestamp": ping_start_time
+	}
+	udp_client.put_packet(JSON.stringify(ping_data).to_utf8_buffer())
 
 # Alterna para a cena do jogo
 func switch_to_game_scene():
